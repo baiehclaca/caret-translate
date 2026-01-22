@@ -27,7 +27,15 @@ let package = Package(
             dependencies: [
                 "CaretTranslateCore",
                 .product(name: "CoreMLPipelines", package: "CoreMLPipelines")
-            ]
+            ],
+            resources: [
+                .process("Resources")
+            ],
+            infoPlist: .dictionary([
+                "CFBundleDisplayName": "Caret Translate",
+                "CFBundleName": "Caret Translate",
+                "CFBundleIconName": "AppIcon"
+            ])
         ),
         .testTarget(
             name: "CaretTranslateCoreTests",
