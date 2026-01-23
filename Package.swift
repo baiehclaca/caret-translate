@@ -30,12 +30,7 @@ let package = Package(
             ],
             resources: [
                 .process("Resources")
-            ],
-            infoPlist: .dictionary([
-                "CFBundleDisplayName": "Caret Translate",
-                "CFBundleName": "Caret Translate",
-                "CFBundleIconName": "AppIcon"
-            ])
+            ]
         ),
         .testTarget(
             name: "CaretTranslateCoreTests",

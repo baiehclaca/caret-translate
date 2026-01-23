@@ -1,6 +1,6 @@
 import Foundation
 
-public final class DeepLTranslator: Translator {
+public final class DeepLTranslator: Translator, @unchecked Sendable {
     private let apiKeyStore: ApiKeyStore
     private let clientFactory: (String) -> DeepLClient
     private let formalityProvider: () -> TranslationFormality

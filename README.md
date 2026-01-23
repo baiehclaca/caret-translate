@@ -9,6 +9,7 @@ CaretTranslate is a macOS menu bar app that replaces the nearest word to the car
 - Preview and confirm before replacing text.
 - Privacy controls: allowlist/denylist and secure-field blocking.
 - Translation history with retention controls.
+- Translation cache for faster repeat translations (clearable).
 - Quick language switcher in the menu bar.
 - Quality knobs: formality and performance (fast/balanced/quality).
 - Debug log window and status health checks.
@@ -26,6 +27,7 @@ CaretTranslate is a macOS menu bar app that replaces the nearest word to the car
 - Shortcut mode and hotkey
 - Preview before replacing
 - Formality and performance
+- Clear translation cache
 
 ### Privacy
 - Allowlist/denylist apps
@@ -68,7 +70,7 @@ Add screenshots here (drag-drop or replace placeholders):
 - Text is read from the focused app only when you trigger a translation.
 - Translations are sent to DeepL when enabled.
 - API key is stored encrypted locally (Keychain-backed).
-- Translation history is stored locally and can be cleared anytime.
+- Translation history and cache are stored locally, encrypted at rest, and can be cleared anytime.
 - No analytics or tracking is included by default.
 
 ## Roadmap

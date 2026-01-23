@@ -5,6 +5,8 @@ import CaretTranslateCore
 final class DoubleTabMonitor {
     private let handler: DoubleTapShortcutHandler
     private let trigger: () -> Void
+    private let prefetch: (() -> Void)?
+    private let cancelPrefetch: (() -> Void)?
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
     private var pendingWorkItem: DispatchWorkItem?
@@ -12,9 +14,16 @@ final class DoubleTabMonitor {
     private let targetKeyCode: CGKeyCode = 48
     private let syntheticEventMarker: Int64 = 0x43545442
 
-    init(handler: DoubleTapShortcutHandler = DoubleTapShortcutHandler(), trigger: @escaping () -> Void) {
+    init(
+        handler: DoubleTapShortcutHandler = DoubleTapShortcutHandler(),
+        trigger: @escaping () -> Void,
+        prefetch: (() -> Void)? = nil,
+        cancelPrefetch: (() -> Void)? = nil
+    ) {
         self.handler = handler
         self.trigger = trigger
+        self.prefetch = prefetch
+        self.cancelPrefetch = cancelPrefetch
     }
 
     @discardableResult
@@ -54,6 +63,7 @@ final class DoubleTabMonitor {
         pendingWorkItem?.cancel()
         pendingWorkItem = nil
         suppressedKeyUpCount = 0
+        cancelPrefetch?()
         if let runLoopSource {
             CFRunLoopRemoveSource(CFRunLoopGetCurrent(), runLoopSource, .commonModes)
             self.runLoopSource = nil
@@ -113,6 +123,7 @@ final class DoubleTabMonitor {
             return Unmanaged.passUnretained(event)
         case .pending:
             suppressedKeyUpCount += 1
+            prefetch?()
             schedulePendingTab()
             return nil
         case .triggered:
@@ -127,6 +138,7 @@ final class DoubleTabMonitor {
         cancelPendingTab()
         let workItem = DispatchWorkItem { [weak self] in
             self?.pendingWorkItem = nil
+            self?.cancelPrefetch?()
             self?.postTabKeyPress()
         }
         pendingWorkItem = workItem
@@ -140,6 +152,7 @@ final class DoubleTabMonitor {
 
     private func flushPendingTab() {
         cancelPendingTab()
+        cancelPrefetch?()
         postTabKeyPress()
     }
 

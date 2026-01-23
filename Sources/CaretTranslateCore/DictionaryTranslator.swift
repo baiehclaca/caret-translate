@@ -1,6 +1,6 @@
 import Foundation
 
-public protocol Translator {
+public protocol Translator: Sendable {
     func translate(_ text: String, from: Language, to: Language) async throws -> String?
 }
 

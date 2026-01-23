@@ -9,10 +9,11 @@ struct SettingsView: View {
 
     @StateObject private var historyStore = TranslationHistoryStore()
     @StateObject private var dictionaryStore = CustomDictionaryStore()
+    private let cacheStore = TranslationCacheStore.shared
 
     var body: some View {
         TabView {
-            GeneralSettingsView(viewModel: viewModel)
+            GeneralSettingsView(viewModel: viewModel, cacheStore: cacheStore)
                 .tabItem { Text("General") }
 
             PrivacySettingsView(viewModel: viewModel)

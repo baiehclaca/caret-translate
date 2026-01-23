@@ -1,7 +1,7 @@
 import Foundation
 import CaretTranslateCore
 
-struct DynamicDictionaryTranslator: Translator {
+struct DynamicDictionaryTranslator: Translator, @unchecked Sendable {
     let mapProvider: () -> [LanguagePair: [String: String]]
 
     func translate(_ text: String, from: Language, to: Language) async throws -> String? {

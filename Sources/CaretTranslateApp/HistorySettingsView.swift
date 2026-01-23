@@ -3,6 +3,7 @@ import SwiftUI
 struct HistorySettingsView: View {
     @ObservedObject var viewModel: SettingsViewModel
     @ObservedObject var historyStore: TranslationHistoryStore
+    @State private var showClearConfirmation = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -24,7 +25,7 @@ struct HistorySettingsView: View {
             HStack {
                 Spacer()
                 Button("Clear History") {
-                    historyStore.clear()
+                    showClearConfirmation = true
                 }
             }
 
@@ -48,6 +49,14 @@ struct HistorySettingsView: View {
             }
         }
         .padding(20)
+        .alert("Clear Translation History?", isPresented: $showClearConfirmation) {
+            Button("Clear", role: .destructive) {
+                historyStore.clear()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This will permanently delete your saved translations.")
+        }
         .onChange(of: viewModel.historyRetentionCount) { _, _ in
             historyStore.prune(referenceDate: Date())
         }

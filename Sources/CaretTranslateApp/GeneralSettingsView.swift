@@ -3,6 +3,7 @@ import CaretTranslateCore
 
 struct GeneralSettingsView: View {
     @ObservedObject var viewModel: SettingsViewModel
+    let cacheStore: TranslationCacheStore
 
     var body: some View {
         let sourceOptions = viewModel.sourceLanguages.isEmpty ? fallbackSourceLanguageOptions : viewModel.sourceLanguages
@@ -88,6 +89,15 @@ struct GeneralSettingsView: View {
                             ForEach(PerformanceMode.allCases, id: \.self) { option in
                                 Text(option.label).tag(option)
                             }
+                        }
+
+                        HStack {
+                            Button("Clear Translation Cache") {
+                                Task {
+                                    await cacheStore.clear()
+                                }
+                            }
+                            Spacer()
                         }
                     }
                     .padding(.vertical, 4)

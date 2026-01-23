@@ -23,6 +23,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         configureStatusItem()
         configureShortcutMonitor()
         observeSettingsChanges()
+        coordinator.warmUp()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -35,7 +36,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func configureStatusItem() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        item.button?.title = "Translate"
+        if let image = loadStatusIcon() {
+            image.isTemplate = true
+            item.button?.image = image
+            item.button?.imagePosition = .imageOnly
+            item.button?.title = ""
+        } else {
+            item.button?.title = "Translate"
+        }
         let menu = NSMenu()
         menu.delegate = self
 
@@ -90,11 +98,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         switch settings.shortcutMode {
         case .doubleTap:
-            doubleTabMonitor = DoubleTabMonitor { [weak self] in
-                Task { @MainActor in
-                    self?.handleTranslate()
+            doubleTabMonitor = DoubleTabMonitor(
+                trigger: { [weak self] in
+                    Task { @MainActor in
+                        self?.handleTranslate()
+                    }
+                },
+                prefetch: { [weak self] in
+                    Task { @MainActor in
+                        self?.handlePrefetch()
+                    }
+                },
+                cancelPrefetch: { [weak self] in
+                    Task { @MainActor in
+                        self?.handleCancelPrefetch()
+                    }
                 }
-            }
+            )
             if doubleTabMonitor?.start() != true {
                 DebugLogger.log("Input monitoring unavailable for shortcut")
                 showInputMonitoringAlert()
@@ -164,6 +184,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func handleTranslate() {
         coordinator.translateNearestWord()
+    }
+
+    @objc private func handlePrefetch() {
+        coordinator.prefetchTranslation()
+    }
+
+    @objc private func handleCancelPrefetch() {
+        coordinator.cancelPrefetch()
     }
 
     @objc private func handleOpenSettings() {
@@ -252,6 +280,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             items = [LanguageMenuItem(code: settings.targetLanguage.code, name: settings.targetLanguage.code.uppercased())]
         }
         return items
+    }
+
+    private func loadStatusIcon() -> NSImage? {
+        if let symbol = NSImage(systemSymbolName: "chevron.up", accessibilityDescription: "Caret Translate") {
+            let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .semibold)
+            return symbol.withSymbolConfiguration(config) ?? symbol
+        }
+        if let image = NSImage(named: "StatusIcon") {
+            return image
+        }
+        if let url = Bundle.module.url(forResource: "status-icon", withExtension: "png"),
+           let image = NSImage(contentsOf: url) {
+            return image
+        }
+        return nil
     }
 
     @objc private func handleQuit() {
