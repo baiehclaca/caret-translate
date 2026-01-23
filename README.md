@@ -1,80 +1,78 @@
 # CaretTranslate
 
-CaretTranslate is a macOS menu bar app that replaces the nearest word to the caret with a translation. It uses DeepL for sentence translation, an offline dictionary for word fallback, and an optional local contextual fixer to keep grammar correct.
+CaretTranslate is a macOS menu bar helper that replaces whichever word is closest to the caret with a translation. It blends DeepL sentence-level quality, a local dictionary fallback, contextual fixes, and a configurable user experience so you can translate words without leaving your keyboard.
 
-## Features
-- Global shortcut: double-tap Tab or custom hotkey.
-- Sentence-aware replacement around the caret.
-- Auto-detect source language (DeepL) or choose a specific source.
-- Preview and confirm before replacing text.
-- Privacy controls: allowlist/denylist and secure-field blocking.
-- Translation history with retention controls.
-- Translation cache for faster repeat translations (clearable).
-- Quick language switcher in the menu bar.
-- Quality knobs: formality and performance (fast/balanced/quality).
-- Debug log window and status health checks.
-- Experimental custom dictionary editor.
+## Highlights
+- **Instant trigger**: double-tap Tab or a custom hotkey prefetches the translation and caches it for snappy replacements.
+- **DeepL power**: automatic language detection, formality control, and performance modes backed by DeepL plus optional Qwen contextual fixing.
+- **Privacy-first design**: secure-field filtering, per-app allow/deny lists, encrypted history/cache storage, and explicit Clear buttons.
+- **Preview & history**: confirm replacements before applying them and review the encrypted history with retention controls and a confirmation dialog.
+- **System health + debug**: a Status tab reports Accessibility/Input Monitoring permissions and API key status, while the Debug Log shows runtime events.
+- **Experimental tools**: custom dictionary entries for specific language pairs and a drawer to stage replacements before committing.
 
 ## Controls
-- Translate now: menu bar item "Translate Now".
-- Shortcut mode: double-tap Tab or custom hotkey (Settings > General).
-- Quick language switcher: menu bar > Languages.
+- **Menu bar**: click the caret icon (or “Translate” word) for “Translate Now”, Languages, Settings, Debug Log, and Quit.
+- **Shortcut modes**: choose double-tap Tab (default) or configure a custom hotkey in Settings > General > Shortcut.
+- **Quick languages**: swap source/target directly inside the Languages submenu in the menu bar item.
+- **Preview**: a modal shows the original word and replacement before it is committed.
 
-## Settings
+## Settings overview
+
 ### General
-- DeepL API key
-- Source and target languages (includes Auto Detect)
-- Shortcut mode and hotkey
-- Preview before replacing
-- Formality and performance
-- Clear translation cache
+- Save your DeepL API key, load supported languages, and pick Auto Detect when needed.
+- Pick source/target languages, toggle preview, and fine-tune formality/performance.
+- Configure shortcut mode or hotkey (with modifiers and key capture).
+- Clear Translation Cache (encrypted on disk) with a single tap.
 
 ### Privacy
-- Allowlist/denylist apps
-- Secure-field blocking (automatic)
+- Manage allowlist/denylist plus secure-field detection.
+- Translation attempts to secure fields are always blocked.
 
 ### History
-- Enable/disable history
-- Retention count and days
-- Clear history
+- Enable/disable history, limit retention count/days, and Clear History with confirmation.
+- All entries are encrypted locally and can be purged on demand.
 
 ### Status
-- Accessibility permission
-- Input Monitoring permission
-- API key configured
+- Health indicators for Accessibility, Input Monitoring, and the DeepL API key.
+- Refresh button re-checks permissions and API availability.
 
 ### Experimental
-- Custom dictionary editor (per language pair)
+- Custom dictionary editor pairs incoming words with preferred replacements per language pair.
+- Clear All removes every custom entry.
+
+## Security & data use
+- Text is read only after the hotkey is triggered.
+- Translations are sent to DeepL when an API key is configured.
+- API key, history, and cache are encrypted with a Keychain-backed store.
+- No analytics, crash reporting, or tracking is included by default.
 
 ## Permissions
-The app needs:
-- Accessibility (to read and replace text in other apps)
-- Input Monitoring (for global shortcuts)
+CaretTranslate requests:
+- **Accessibility** to read and replace text in the focused app.
+- **Input Monitoring** to detect the shortcut/tap.
 
-## Run
-Open the package in Xcode and run the `CaretTranslateApp` target. Then enable permissions in System Settings > Privacy & Security.
+## Running locally
+```bash
+swift run CaretTranslateApp
+```
+After launching, grant the requested permissions in System Settings > Privacy & Security so the shortcuts work.
 
 ## Tests
-Run `swift test` from the package root.
+```bash
+swift test
+```
 
 ## Screenshots
-Add screenshots here (drag-drop or replace placeholders):
-- `docs/screenshots/menu-bar.png`
-- `docs/screenshots/preview.png`
-- `docs/screenshots/settings-general.png`
-- `docs/screenshots/settings-privacy.png`
-- `docs/screenshots/settings-history.png`
-- `docs/screenshots/status.png`
-
-## Privacy & Data Use (App Store Draft)
-- Text is read from the focused app only when you trigger a translation.
-- Translations are sent to DeepL when enabled.
-- API key is stored encrypted locally (Keychain-backed).
-- Translation history and cache are stored locally, encrypted at rest, and can be cleared anytime.
-- No analytics or tracking is included by default.
+Drop the provided artwork into the docs folder and update the paths if needed:
+- `docs/screenshots/history.png` (History tab + log)
+- `docs/screenshots/status.png` (Status health indicators)
+- `docs/screenshots/experimental.png` (Custom dictionary editor)
+- `docs/screenshots/debug-log.png` (Debug log window)
+- `docs/screenshots/preview-dialog.png` (Preview translation modal)
+- `docs/screenshots/menu-bar.png` (Menu bar caret + menu)
+- `docs/screenshots/caret-icon.png` (Status item icon)
 
 ## Roadmap
-- Preview UI polish and keyboard shortcuts.
-- Allowlist presets for popular apps.
-- Open-source offline translation option.
-- Per-app language rules.
+- Per-app presets for privacy allowlists.
+- Improved preview automation.
+- Optional offline/LLM translation fallback for very low-connectivity scenarios.
