@@ -83,22 +83,50 @@ struct ModelManagerView: View {
     }
 
     private func runDownloadScript() async throws {
-        var scriptPath = Bundle.main.path(
+        // Try multiple possible locations for the script
+        var scriptPath: String?
+
+        // Try in nllb-translate subdirectory
+        scriptPath = Bundle.main.path(
             forResource: "download_model",
             ofType: "py",
             inDirectory: "nllb-translate"
         )
 
+        // Try in Resources root
+        if scriptPath == nil {
+            scriptPath = Bundle.main.path(
+                forResource: "download_model",
+                ofType: "py",
+                inDirectory: "Resources/nllb-translate"
+            )
+        }
+
+        // Try direct resource lookup
         if scriptPath == nil {
             scriptPath = Bundle.main.path(forResource: "download_model", ofType: "py")
         }
 
-        guard let finalPath = scriptPath else {
-            throw NSError(
-                domain: "ModelDownload",
-                code: -1,
-                userInfo: [NSLocalizedDescriptionKey: "Download script not found in app bundle"]
-            )
+        // Try in the app bundle's Resources folder directly
+        if scriptPath == nil {
+            let resourcePath = Bundle.main.resourcePath
+            if let resourcePath = resourcePath {
+                let possiblePath = (resourcePath as NSString)
+                    .appendingPathComponent("nllb-translate")
+                    .appending("/download_model.py")
+                if FileManager.default.fileExists(atPath: possiblePath) {
+                    scriptPath = possiblePath
+                }
+            }
+        }
+
+        // If script not found in bundle, create it from embedded content
+        let finalPath: String
+        if let path = scriptPath {
+            finalPath = path
+        } else {
+            // Fallback: write script to temp directory
+            finalPath = try createDownloadScriptInTempDir()
         }
 
         let pythonPath = NLLBTranslator.findPythonExecutable()
@@ -160,5 +188,55 @@ struct ModelManagerView: View {
             .appendingPathComponent("models")
             .appendingPathComponent("nllb-200-distilled-600M-ct2-int8")
             .path
+    }
+
+    private func createDownloadScriptInTempDir() throws -> String {
+        let scriptContent = """
+        #!/usr/bin/env python3
+        import os, sys, subprocess
+        from pathlib import Path
+
+        def install_packages():
+            print("Installing required packages...")
+            packages = ["ctranslate2", "transformers", "sentencepiece", "torch"]
+            for package in packages:
+                print(f"Installing {package}...")
+                result = subprocess.run([sys.executable, "-m", "pip", "install", "--user", package], capture_output=True, text=True)
+                if result.returncode != 0:
+                    print(f"Error: {result.stderr}")
+                    raise Exception(f"Failed to install {package}")
+
+        def check_packages():
+            try:
+                import ctranslate2, transformers, sentencepiece, torch
+                return True
+            except ImportError:
+                return False
+
+        if not check_packages():
+            install_packages()
+            if not check_packages():
+                sys.exit(1)
+
+        import ctranslate2
+        output_dir = Path.home() / "Library" / "Application Support" / "CaretTranslate" / "models" / "nllb-200-distilled-600M-ct2-int8"
+
+        if output_dir.exists():
+            print("Model already exists")
+            sys.exit(0)
+
+        print("Downloading NLLB model...")
+        output_dir.parent.mkdir(parents=True, exist_ok=True)
+        converter = ctranslate2.converters.TransformersConverter("facebook/nllb-200-distilled-600M")
+        converter.convert(str(output_dir), quantization="int8", force=True)
+        print("Done!")
+        """
+
+        let tempDir = FileManager.default.temporaryDirectory
+        let scriptPath = tempDir.appendingPathComponent("download_model_\(UUID().uuidString).py")
+
+        try scriptContent.write(to: scriptPath, atomically: true, encoding: .utf8)
+
+        return scriptPath.path
     }
 }
