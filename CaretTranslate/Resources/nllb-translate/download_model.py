@@ -9,14 +9,20 @@ from pathlib import Path
 def install_packages():
     """Install required packages using pip."""
     print("Installing required packages (this may take a few minutes)...")
-    print("Installing: ctranslate2, transformers, sentencepiece, torch")
+    print("Installing: torch>=2.6.0, transformers, sentencepiece, ctranslate2")
 
-    packages = ["ctranslate2", "transformers", "sentencepiece", "torch"]
+    # Specify minimum versions to avoid compatibility issues
+    packages = [
+        "torch>=2.6.0",
+        "transformers",
+        "sentencepiece",
+        "ctranslate2"
+    ]
 
     for package in packages:
         print(f"Installing {package}...")
         result = subprocess.run(
-            [sys.executable, "-m", "pip", "install", "--user", package],
+            [sys.executable, "-m", "pip", "install", "--user", "--upgrade", package],
             capture_output=True,
             text=True
         )

@@ -212,10 +212,16 @@ struct ModelManagerView: View {
 
         def install_packages():
             print("Installing required packages...")
-            packages = ["ctranslate2", "transformers", "sentencepiece", "torch"]
+            # Specify minimum versions to avoid compatibility issues
+            packages = [
+                "torch>=2.6.0",
+                "transformers",
+                "sentencepiece",
+                "ctranslate2"
+            ]
             for package in packages:
                 print(f"Installing {package}...")
-                result = subprocess.run([sys.executable, "-m", "pip", "install", "--user", package], capture_output=True, text=True)
+                result = subprocess.run([sys.executable, "-m", "pip", "install", "--user", "--upgrade", package], capture_output=True, text=True)
                 if result.returncode != 0:
                     print(f"Error: {result.stderr}")
                     raise Exception(f"Failed to install {package}")
