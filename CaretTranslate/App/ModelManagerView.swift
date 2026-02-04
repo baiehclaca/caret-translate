@@ -91,15 +91,13 @@ struct ModelManagerView: View {
         try FileManager.default.createDirectory(at: modelDir, withIntermediateDirectories: true)
 
         // Pre-converted CTranslate2 model files from Hugging Face
-        // Using michaelfeil/ct2fast-nllb-200-distilled-600M
-        let baseURL = "https://huggingface.co/michaelfeil/ct2fast-nllb-200-distilled-600M/resolve/main"
+        // Using entai2965/nllb-200-distilled-600M-ctranslate2 (public model)
+        let baseURL = "https://huggingface.co/entai2965/nllb-200-distilled-600M-ctranslate2/resolve/main"
 
         let files = [
             "config.json",
             "model.bin",
-            "shared_vocabulary.json",
-            "source.spm",
-            "target.spm"
+            "shared_vocabulary.json"
         ]
 
         for (index, filename) in files.enumerated() {
