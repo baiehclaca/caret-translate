@@ -96,6 +96,24 @@ struct LaunchAtLoginOnboardingView: View {
 
                 Divider()
 
+                // Model Download Notice
+                HStack {
+                    Image(systemName: "arrow.down.circle.fill")
+                        .foregroundColor(.blue)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Important: Download the NLLB model")
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                        Text("After setup, go to Settings > Models and download the NLLB model (~1.5 GB) to enable 50+ additional languages including Swedish, Finnish, Greek, Hebrew, and more.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .padding(.vertical, 8)
+                .padding(.horizontal, 12)
+                .background(Color.blue.opacity(0.1))
+                .cornerRadius(8)
+
                 // First Start Notice
                 HStack {
                     Image(systemName: "info.circle")

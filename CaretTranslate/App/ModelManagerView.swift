@@ -79,26 +79,52 @@ struct ModelManagerView: View {
             ofType: "py",
             inDirectory: "nllb-translate"
         )
-        
+
         if scriptPath == nil {
             scriptPath = Bundle.main.path(forResource: "download_model", ofType: "py")
         }
-        
-        let finalPath = scriptPath ?? "CaretTranslate/Resources/nllb-translate/download_model.py"
+
+        guard let finalPath = scriptPath else {
+            throw NSError(
+                domain: "ModelDownload",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "Download script not found in app bundle"]
+            )
+        }
+
         let pythonPath = NLLBTranslator.findPythonExecutable()
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: pythonPath)
         process.arguments = [finalPath]
 
+        // Capture output for better error messages
+        let outputPipe = Pipe()
+        let errorPipe = Pipe()
+        process.standardOutput = outputPipe
+        process.standardError = errorPipe
+
         try process.run()
         process.waitUntilExit()
 
         if process.terminationStatus != 0 {
+            let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+            let errorOutput = String(data: errorData, encoding: .utf8) ?? "Unknown error"
+
+            var errorMessage = "Download failed. "
+
+            if errorOutput.contains("No module named") || errorOutput.contains("ModuleNotFoundError") {
+                errorMessage += "Python packages not installed. Please install: pip3 install ctranslate2 transformers sentencepiece torch"
+            } else if errorOutput.contains("command not found") || pythonPath.isEmpty {
+                errorMessage += "Python 3 not found. Please install Python 3 from python.org"
+            } else {
+                errorMessage += "Error: \(errorOutput)"
+            }
+
             throw NSError(
                 domain: "ModelDownload",
                 code: Int(process.terminationStatus),
-                userInfo: [NSLocalizedDescriptionKey: "Download failed with exit code \(process.terminationStatus)"]
+                userInfo: [NSLocalizedDescriptionKey: errorMessage]
             )
         }
     }
