@@ -5,6 +5,7 @@ struct ModelManagerView: View {
     @State private var downloadProgress: Double = 0
     @State private var downloadError: String?
     @State private var modelInstalled = false
+    @State private var statusMessage: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -22,10 +23,15 @@ struct ModelManagerView: View {
                     Text("Model installed (~300 MB)")
                         .foregroundColor(.secondary)
                 } else if isDownloading {
-                    ProgressView(value: downloadProgress)
-                        .frame(width: 150)
-                    Text("\(Int(downloadProgress * 100))%")
-                        .foregroundColor(.secondary)
+                    ProgressView()
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(statusMessage ?? "Downloading...")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Text("This may take 5-10 minutes for first-time setup")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                 } else {
                     Button("Download Model") {
                         downloadModel()
@@ -56,17 +62,20 @@ struct ModelManagerView: View {
     private func downloadModel() {
         isDownloading = true
         downloadError = nil
+        statusMessage = "Preparing download..."
 
         Task {
             do {
                 try await runDownloadScript()
                 await MainActor.run {
                     isDownloading = false
+                    statusMessage = nil
                     checkModelStatus()
                 }
             } catch {
                 await MainActor.run {
                     isDownloading = false
+                    statusMessage = nil
                     downloadError = error.localizedDescription
                 }
             }
@@ -96,16 +105,28 @@ struct ModelManagerView: View {
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: pythonPath)
-        process.arguments = [finalPath]
+        process.arguments = ["-u", finalPath]  // -u for unbuffered output
 
-        // Capture output for better error messages
+        // Capture output for progress and error messages
         let outputPipe = Pipe()
         let errorPipe = Pipe()
         process.standardOutput = outputPipe
         process.standardError = errorPipe
 
+        // Monitor output for status updates
+        outputPipe.fileHandleForReading.readabilityHandler = { handle in
+            let data = handle.availableData
+            if let output = String(data: data, encoding: .utf8), !output.isEmpty {
+                // Note: Can't capture self weakly since View is a struct
+                print("Download progress: \(output)")
+            }
+        }
+
         try process.run()
         process.waitUntilExit()
+
+        // Clean up handler
+        outputPipe.fileHandleForReading.readabilityHandler = nil
 
         if process.terminationStatus != 0 {
             let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
@@ -113,12 +134,12 @@ struct ModelManagerView: View {
 
             var errorMessage = "Download failed. "
 
-            if errorOutput.contains("No module named") || errorOutput.contains("ModuleNotFoundError") {
-                errorMessage += "Python packages not installed. Please install: pip3 install ctranslate2 transformers sentencepiece torch"
+            if errorOutput.contains("Failed to install") {
+                errorMessage += "Could not install required packages. The app will automatically install them, but it needs internet access and may take several minutes."
             } else if errorOutput.contains("command not found") || pythonPath.isEmpty {
                 errorMessage += "Python 3 not found. Please install Python 3 from python.org"
             } else {
-                errorMessage += "Error: \(errorOutput)"
+                errorMessage += errorOutput.prefix(200).description
             }
 
             throw NSError(
