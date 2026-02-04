@@ -96,6 +96,19 @@ struct LaunchAtLoginOnboardingView: View {
 
                 Divider()
 
+                // First Start Notice
+                HStack {
+                    Image(systemName: "info.circle")
+                        .foregroundColor(.orange)
+                    Text("Note: The app may occasionally experience minor issues on first start. If this happens, simply restart the app.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.vertical, 8)
+                .padding(.horizontal, 12)
+                .background(Color.orange.opacity(0.1))
+                .cornerRadius(8)
+
                 // Credits
                 HStack {
                     Spacer()
