@@ -158,17 +158,31 @@ struct ModelManagerView: View {
 
         if process.terminationStatus != 0 {
             let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
-            let errorOutput = String(data: errorData, encoding: .utf8) ?? "Unknown error"
+            let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
+
+            let errorOutput = String(data: errorData, encoding: .utf8) ?? ""
+            let standardOutput = String(data: outputData, encoding: .utf8) ?? ""
+
+            // Combine both outputs for better error reporting
+            let fullOutput = standardOutput + "\n" + errorOutput
 
             var errorMessage = "Download failed. "
 
-            if errorOutput.contains("Failed to install") {
-                errorMessage += "Could not install required packages. The app will automatically install them, but it needs internet access and may take several minutes."
-            } else if errorOutput.contains("command not found") || pythonPath.isEmpty {
+            if fullOutput.contains("Failed to install") || fullOutput.contains("ERROR: Failed to install") {
+                errorMessage += "Package installation failed. Please open Terminal and run: pip3 install ctranslate2 transformers sentencepiece torch"
+            } else if fullOutput.contains("ModuleNotFoundError") || fullOutput.contains("No module named") {
+                errorMessage += "Python packages missing. Please run in Terminal: pip3 install ctranslate2 transformers sentencepiece torch"
+            } else if fullOutput.contains("command not found") || pythonPath.isEmpty {
                 errorMessage += "Python 3 not found. Please install Python 3 from python.org"
             } else {
-                errorMessage += errorOutput.prefix(200).description
+                // Show more of the actual error (last 500 chars to see the real issue)
+                let relevantError = fullOutput.suffix(500)
+                errorMessage += String(relevantError)
             }
+
+            // Also log to console for debugging
+            print("Download failed with status \(process.terminationStatus)")
+            print("Full output:", fullOutput)
 
             throw NSError(
                 domain: "ModelDownload",
