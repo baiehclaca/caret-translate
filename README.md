@@ -1,78 +1,107 @@
 # CaretTranslate
 
-CaretTranslate is a macOS menu bar helper that replaces whichever word is closest to the caret with a translation. It blends DeepL sentence-level quality, a local dictionary fallback, contextual fixes, and a configurable user experience so you can translate words without leaving your keyboard.
+## Purpose
+CaretTranslate is a macOS menu bar app that replaces the word or sentence nearest the caret with a translation. It’s built for fast, keyboard‑first translation without switching apps.
 
 ## Highlights
-- **Instant trigger**: double-tap Tab or a custom hotkey prefetches the translation and caches it for snappy replacements.
-- **DeepL power**: automatic language detection, formality control, and performance modes backed by DeepL plus optional Qwen contextual fixing.
-- **Privacy-first design**: secure-field filtering, per-app allow/deny lists, encrypted history/cache storage, and explicit Clear buttons.
-- **Preview & history**: confirm replacements before applying them and review the encrypted history with retention controls and a confirmation dialog.
-- **System health + debug**: a Status tab reports Accessibility/Input Monitoring permissions and API key status, while the Debug Log shows runtime events.
-- **Experimental tools**: custom dictionary entries for specific language pairs and a drawer to stage replacements before committing.
+- Menu‑bar UX with a single shortcut to translate in place.
+- Apple Translation for supported languages (fast, on‑device).
+- NLLB‑200 + CTranslate2 for extended language coverage.
+- Optional preview before applying replacements.
+- Secure‑field protection (password fields are always blocked).
+- Local‑only translation path by default (no API keys required).
 
-## Controls
-- **Menu bar**: click the caret icon (or “Translate” word) for “Translate Now”, Languages, Settings, Debug Log, and Quit.
-- **Shortcut modes**: choose double-tap Tab (default) or configure a custom hotkey in Settings > General > Shortcut.
-- **Quick languages**: swap source/target directly inside the Languages submenu in the menu bar item.
-- **Preview**: a modal shows the original word and replacement before it is committed.
+## Usage
+1. Launch the app and grant the requested permissions.
+2. Choose source and target languages in Settings.
+3. Double‑tap `Tab` (or your custom hotkey) to translate the nearest word or sentence.
+4. Confirm in the preview (if enabled) and the replacement is applied.
 
-## Settings overview
+## Parameters
+These are the primary user‑configurable settings:
+- `Source language`: `Auto` or a specific language.
+- `Target language`: the output language.
+- `Shortcut`: double‑tap `Tab` or a custom hotkey.
+- `Preview`: show a confirmation dialog before applying the replacement.
+- `History`: enable/disable translated history entries.
 
-### General
-- Save your DeepL API key, load supported languages, and pick Auto Detect when needed.
-- Pick source/target languages, toggle preview, and fine-tune formality/performance.
-- Configure shortcut mode or hotkey (with modifiers and key capture).
-- Clear Translation Cache (encrypted on disk) with a single tap.
+## Examples
+- Translate a German word to English while typing:
+  - Source: `Auto`
+  - Target: `en`
+  - Action: double‑tap `Tab`
+- Translate a full sentence to Spanish with confirmation:
+  - Source: `en`
+  - Target: `es`
+  - Preview: on
+  - Action: double‑tap `Tab` and confirm
 
-### Privacy
-- Manage allowlist/denylist plus secure-field detection.
-- Translation attempts to secure fields are always blocked.
+## How It Works
+- For Apple‑supported languages, CaretTranslate uses Apple’s Translation framework.
+- For extended languages, it uses the NLLB‑200 distilled model via CTranslate2.
+- A warm‑up translation runs on launch to reduce first‑use latency.
 
-### History
-- Enable/disable history, limit retention count/days, and Clear History with confirmation.
-- All entries are encrypted locally and can be purged on demand.
+Terminology:
+- **NLLB** (No Language Left Behind): a multilingual translation model.
+- **CTranslate2**: an optimized inference engine for Transformer models.
+- **SentencePiece**: a subword tokenizer used by NLLB.
 
-### Status
-- Health indicators for Accessibility, Input Monitoring, and the DeepL API key.
-- Refresh button re-checks permissions and API availability.
+## Model Download (Extended Languages)
+To enable extended language support:
+1. Open Settings → Models.
+2. Click `Download Model`.
+3. The app downloads the CTranslate2 model files and tokenizer (~350 MB + tokenizer).
 
-### Experimental
-- Custom dictionary editor pairs incoming words with preferred replacements per language pair.
-- Clear All removes every custom entry.
+The model is stored in:
+`~/Library/Application Support/CaretTranslate/models/nllb-200-distilled-600M-ct2-int8`
 
-## Security & data use
-- Text is read only after the hotkey is triggered.
-- Translations are sent to DeepL when an API key is configured.
-- API key, history, and cache are encrypted with a Keychain-backed store.
-- No analytics, crash reporting, or tracking is included by default.
+## Optional Native Helper (Faster Startup)
+The app can use a native helper instead of the Python helper.
+1. Build the helper in `CaretTranslate/Resources/nllb-translate-native` using CMake.
+2. Copy `translate-ct2` to:
+   `~/Library/Application Support/CaretTranslate/bin/translate-ct2`
+3. On launch, the app will prefer the native helper if present.
 
 ## Permissions
 CaretTranslate requests:
-- **Accessibility** to read and replace text in the focused app.
-- **Input Monitoring** to detect the shortcut/tap.
+- **Accessibility**: to read and replace text in the focused app.
+- **Input Monitoring**: to detect the translation shortcut.
 
-## Running locally
+Secure fields (passwords, etc.) are always blocked from translation.
+
+## Data & Privacy
+- Translation text is only captured after the shortcut is triggered.
+- Apple Translation runs on device according to Apple’s framework behavior.
+- NLLB translations run locally using the downloaded model.
+- No external API keys are required for the default translation path.
+
+## Build From Source
 ```bash
-swift run CaretTranslateApp
+xcodebuild -scheme CaretTranslate -destination 'platform=macOS'
 ```
-After launching, grant the requested permissions in System Settings > Privacy & Security so the shortcuts work.
+Or open `CaretTranslate.xcodeproj` in Xcode and build the app.
 
 ## Tests
 ```bash
-swift test
+xcodebuild test -scheme CaretTranslate -destination 'platform=macOS'
 ```
 
-## Screenshots
-Drop the provided artwork into the docs folder and update the paths if needed:
-- `docs/screenshots/history.png` (History tab + log)
-- `docs/screenshots/status.png` (Status health indicators)
-- `docs/screenshots/experimental.png` (Custom dictionary editor)
-- `docs/screenshots/debug-log.png` (Debug log window)
-- `docs/screenshots/preview-dialog.png` (Preview translation modal)
-- `docs/screenshots/menu-bar.png` (Menu bar caret + menu)
-- `docs/screenshots/caret-icon.png` (Status item icon)
+## Release (GitHub)
+1. Build a Release app in Xcode.
+2. Zip the app:
+```bash
+ditto -c -k --sequesterRsrc --keepParent CaretTranslate.app CaretTranslate.app.zip
+```
+3. Create a tag and release, then upload the zip as a release asset.
+
+## Troubleshooting
+- If the model isn’t detected, re‑download it in Settings → Models.
+- If a translation fails for an extended language, verify the model folder exists and contains:
+  - `config.json`
+  - `model.bin`
+  - `shared_vocabulary.json`
+  - `sentencepiece.bpe.model`
 
 ## Roadmap
-- Per-app presets for privacy allowlists.
-- Improved preview automation.
-- Optional offline/LLM translation fallback for very low-connectivity scenarios.
+- Optional GPU‑backed translation for lower latency on extended languages.
+- Language‑specific quality tuning for short‑text translations.
