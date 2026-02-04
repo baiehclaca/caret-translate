@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// Hosts the launch-at-login onboarding SwiftUI view in a window.
+/// Hosts the welcome/onboarding SwiftUI view in a window.
 @MainActor
 final class LaunchAtLoginOnboardingWindowController {
     private var windowController: NSWindowController?
@@ -9,7 +9,7 @@ final class LaunchAtLoginOnboardingWindowController {
     /// Shows the onboarding window, creating it on first use.
     func show(
         initiallyEnabled: Bool,
-        onComplete: @escaping (Bool) -> Void
+        onComplete: @escaping (Bool, String, String, ShortcutMode) -> Void
     ) {
         if let window = windowController?.window {
             window.makeKeyAndOrderFront(nil)
@@ -24,9 +24,9 @@ final class LaunchAtLoginOnboardingWindowController {
         )
         let hostingController = NSHostingController(rootView: view)
         let window = NSWindow(contentViewController: hostingController)
-        window.title = "Launch at Login"
+        window.title = "Welcome to CaretTranslate"
         window.styleMask = [.titled, .closable]
-        window.setContentSize(NSSize(width: 520, height: 300))
+        window.setContentSize(NSSize(width: 600, height: 700))
         window.isReleasedWhenClosed = false
 
         let controller = NSWindowController(window: window)

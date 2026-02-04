@@ -337,17 +337,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         guard !settings.onboardingCompleted else {
             return false
         }
-        onboardingWindowController.show(initiallyEnabled: true) { [weak self] enabled in
+        onboardingWindowController.show(initiallyEnabled: true) { [weak self] enabled, source, target, shortcutMode in
             Task { @MainActor in
-                self?.completeOnboarding(launchAtLoginEnabled: enabled)
+                self?.completeOnboarding(
+                    launchAtLoginEnabled: enabled,
+                    sourceLanguage: source,
+                    targetLanguage: target,
+                    shortcutMode: shortcutMode
+                )
             }
         }
         return true
     }
 
-    /// Finalizes onboarding, persists the chosen setting, and syncs launch at login.
-    private func completeOnboarding(launchAtLoginEnabled: Bool) {
+    /// Finalizes onboarding, persists the chosen settings, and syncs launch at login.
+    private func completeOnboarding(
+        launchAtLoginEnabled: Bool,
+        sourceLanguage: String,
+        targetLanguage: String,
+        shortcutMode: ShortcutMode
+    ) {
         settings.launchAtLoginEnabled = launchAtLoginEnabled
+        settings.sourceLanguage = Language(code: sourceLanguage)
+        settings.targetLanguage = Language(code: targetLanguage)
+        settings.shortcutMode = shortcutMode
         settings.onboardingCompleted = true
         NotificationCenter.default.post(name: .settingsDidChange, object: nil)
         onboardingWindowController.close()

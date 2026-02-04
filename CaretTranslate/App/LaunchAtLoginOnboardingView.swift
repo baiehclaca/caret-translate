@@ -1,15 +1,18 @@
 import SwiftUI
 
-/// Presents a first-run prompt to enable launch at login.
+/// Presents a first-run welcome screen with essential settings.
 struct LaunchAtLoginOnboardingView: View {
+    @State private var sourceLanguage: String = LanguageOption.auto.code
+    @State private var targetLanguage: String = "en"
+    @State private var shortcutMode: ShortcutMode = .doubleTap
     @State private var launchAtLoginEnabled: Bool
-    private let onComplete: (Bool) -> Void
+    private let onComplete: (Bool, String, String, ShortcutMode) -> Void
     private let openSettings: () -> Void
 
-    /// Creates the onboarding view with initial toggle state and completion handlers.
+    /// Creates the onboarding view with initial settings and completion handlers.
     init(
         initiallyEnabled: Bool,
-        onComplete: @escaping (Bool) -> Void,
+        onComplete: @escaping (Bool, String, String, ShortcutMode) -> Void,
         openSettings: @escaping () -> Void
     ) {
         self._launchAtLoginEnabled = State(initialValue: initiallyEnabled)
@@ -18,37 +21,116 @@ struct LaunchAtLoginOnboardingView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Welcome to CaretTranslate")
-                .font(.title2)
-                .bold()
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                // Header
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Welcome to CaretTranslate")
+                        .font(.title)
+                        .bold()
 
-            Text("Enable launch at login so CaretTranslate is ready whenever you sign in. You can change this later in Settings.")
-                .foregroundColor(.secondary)
+                    Text("Set up your translation preferences")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
 
-            Toggle("Launch at Login", isOn: $launchAtLoginEnabled)
+                Divider()
 
-            HStack {
-                Button("Not Now", action: handleSkip)
-                Spacer()
-                Button("Continue", action: handleContinue)
-                    .keyboardShortcut(.defaultAction)
+                // Languages
+                GroupBox {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Label("Languages", systemImage: "globe")
+                            .font(.headline)
+
+                        Picker("Source Language", selection: $sourceLanguage) {
+                            ForEach(SupportedLanguages.all) { option in
+                                Text(option.label).tag(option.code)
+                            }
+                        }
+
+                        Picker("Target Language", selection: $targetLanguage) {
+                            ForEach(SupportedLanguages.all.filter { $0.code != LanguageOption.auto.code }) { option in
+                                Text(option.label).tag(option.code)
+                            }
+                        }
+                    }
+                    .padding(.vertical, 8)
+                }
+
+                // Shortcut
+                GroupBox {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Label("Translation Shortcut", systemImage: "keyboard")
+                            .font(.headline)
+
+                        Picker("Shortcut Mode", selection: $shortcutMode) {
+                            ForEach(ShortcutMode.allCases, id: \.self) { mode in
+                                Text(mode.label).tag(mode)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+
+                        Text(shortcutMode == .doubleTap
+                            ? "Press Tab twice quickly to translate"
+                            : "Set your custom hotkey in Settings after setup")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.vertical, 8)
+                }
+
+                // Launch at Login
+                GroupBox {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Label("Startup", systemImage: "power")
+                            .font(.headline)
+
+                        Toggle("Launch at Login", isOn: $launchAtLoginEnabled)
+
+                        Text("CaretTranslate will start automatically when you sign in")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.vertical, 8)
+                }
+
+                Divider()
+
+                // Credits
+                HStack {
+                    Spacer()
+                    Text("Programmed by Teodor and Claude with LOVE! ❤️")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .italic()
+                    Spacer()
+                }
+
+                // Buttons
+                HStack {
+                    Button("Not Now", action: handleSkip)
+                    Spacer()
+                    Button("Get Started", action: handleContinue)
+                        .keyboardShortcut(.defaultAction)
+                        .buttonStyle(.borderedProminent)
+                }
+
+                Button("Open Login Items Settings", action: openSettings)
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
             }
-
-            Button("Open Login Items Settings", action: openSettings)
-                .font(.footnote)
+            .padding(32)
         }
-        .padding(24)
-        .frame(minWidth: 460, minHeight: 240)
+        .frame(minWidth: 500, maxWidth: 600, minHeight: 550, maxHeight: 700)
     }
 
-    /// Completes onboarding and applies the selected launch-at-login state.
+    /// Completes onboarding and applies the selected settings.
     private func handleContinue() {
-        onComplete(launchAtLoginEnabled)
+        onComplete(launchAtLoginEnabled, sourceLanguage, targetLanguage, shortcutMode)
     }
 
-    /// Completes onboarding without enabling launch at login.
+    /// Completes onboarding with default settings.
     private func handleSkip() {
-        onComplete(false)
+        onComplete(false, sourceLanguage, targetLanguage, shortcutMode)
     }
 }
