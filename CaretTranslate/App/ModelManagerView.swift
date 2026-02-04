@@ -1,11 +1,12 @@
 import SwiftUI
+import Foundation
 
 struct ModelManagerView: View {
     @State private var isDownloading = false
     @State private var downloadProgress: Double = 0
     @State private var downloadError: String?
     @State private var modelInstalled = false
-    @State private var statusMessage: String?
+    @State private var statusMessage: String = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -20,15 +21,16 @@ struct ModelManagerView: View {
                 if modelInstalled {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundColor(.green)
-                    Text("Model installed (~300 MB)")
+                    Text("Model installed (~350 MB)")
                         .foregroundColor(.secondary)
                 } else if isDownloading {
-                    ProgressView()
+                    ProgressView(value: downloadProgress)
+                        .frame(width: 200)
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(statusMessage ?? "Downloading...")
+                        Text(statusMessage)
                             .font(.caption)
                             .foregroundColor(.secondary)
-                        Text("This may take 5-10 minutes for first-time setup")
+                        Text("\(Int(downloadProgress * 100))%")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
@@ -36,7 +38,7 @@ struct ModelManagerView: View {
                     Button("Download Model") {
                         downloadModel()
                     }
-                    Text("~1.5 GB download, ~300 MB on disk")
+                    Text("~350 MB download")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -56,32 +58,103 @@ struct ModelManagerView: View {
 
     private func checkModelStatus() {
         let modelPath = Self.modelPath()
-        modelInstalled = FileManager.default.fileExists(atPath: modelPath)
+        let configPath = (modelPath as NSString).appendingPathComponent("config.json")
+        modelInstalled = FileManager.default.fileExists(atPath: configPath)
     }
 
     private func downloadModel() {
         isDownloading = true
         downloadError = nil
-        statusMessage = "Preparing download..."
+        statusMessage = "Starting download..."
+        downloadProgress = 0
 
         Task {
             do {
-                try await runDownloadScript()
+                try await downloadPreconvertedModel()
                 await MainActor.run {
                     isDownloading = false
-                    statusMessage = nil
+                    statusMessage = ""
                     checkModelStatus()
                 }
             } catch {
                 await MainActor.run {
                     isDownloading = false
-                    statusMessage = nil
+                    statusMessage = ""
                     downloadError = error.localizedDescription
                 }
             }
         }
     }
 
+    private func downloadPreconvertedModel() async throws {
+        let modelDir = URL(fileURLWithPath: Self.modelPath())
+        try FileManager.default.createDirectory(at: modelDir, withIntermediateDirectories: true)
+
+        // Pre-converted CTranslate2 model files from Hugging Face
+        // Using michaelfeil/ct2fast-nllb-200-distilled-600M
+        let baseURL = "https://huggingface.co/michaelfeil/ct2fast-nllb-200-distilled-600M/resolve/main"
+
+        let files = [
+            "config.json",
+            "model.bin",
+            "shared_vocabulary.json",
+            "source.spm",
+            "target.spm"
+        ]
+
+        for (index, filename) in files.enumerated() {
+            let progress = Double(index) / Double(files.count)
+            await MainActor.run {
+                self.downloadProgress = progress
+                self.statusMessage = "Downloading \(filename)..."
+            }
+
+            let fileURL = URL(string: "\(baseURL)/\(filename)")!
+            let destinationURL = modelDir.appendingPathComponent(filename)
+
+            try await downloadFile(from: fileURL, to: destinationURL)
+        }
+
+        await MainActor.run {
+            self.downloadProgress = 1.0
+            self.statusMessage = "Download complete!"
+        }
+    }
+
+    private func downloadFile(from url: URL, to destination: URL) async throws {
+        let (tempURL, response) = try await URLSession.shared.download(from: url)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw NSError(
+                domain: "ModelDownload",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "Failed to download \(url.lastPathComponent)"]
+            )
+        }
+
+        if FileManager.default.fileExists(atPath: destination.path) {
+            try FileManager.default.removeItem(at: destination)
+        }
+
+        try FileManager.default.moveItem(at: tempURL, to: destination)
+    }
+
+    static func modelPath() -> String {
+        let appSupport = FileManager.default.urls(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask
+        ).first!
+        return appSupport
+            .appendingPathComponent("CaretTranslate")
+            .appendingPathComponent("models")
+            .appendingPathComponent("nllb-200-distilled-600M-ct2-int8")
+            .path
+    }
+}
+
+// MARK: - Old Python-based implementation (deprecated)
+extension ModelManagerView {
     private func runDownloadScript() async throws {
         // Try multiple possible locations for the script
         var scriptPath: String?
@@ -190,18 +263,6 @@ struct ModelManagerView: View {
                 userInfo: [NSLocalizedDescriptionKey: errorMessage]
             )
         }
-    }
-
-    static func modelPath() -> String {
-        let appSupport = FileManager.default.urls(
-            for: .applicationSupportDirectory,
-            in: .userDomainMask
-        ).first!
-        return appSupport
-            .appendingPathComponent("CaretTranslate")
-            .appendingPathComponent("models")
-            .appendingPathComponent("nllb-200-distilled-600M-ct2-int8")
-            .path
     }
 
     private func createDownloadScriptInTempDir() throws -> String {
