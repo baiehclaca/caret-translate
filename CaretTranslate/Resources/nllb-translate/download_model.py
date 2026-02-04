@@ -10,7 +10,7 @@ def main():
         import ctranslate2
     except ImportError:
         print("Installing ctranslate2...")
-        os.system(f"{sys.executable} -m pip install ctranslate2 transformers sentencepiece")
+        os.system(f"{sys.executable} -m pip install ctranslate2 transformers sentencepiece torch")
         import ctranslate2
 
     output_dir = Path.home() / "Library" / "Application Support" / "CaretTranslate" / "models" / "nllb-200-distilled-600M-ct2-int8"

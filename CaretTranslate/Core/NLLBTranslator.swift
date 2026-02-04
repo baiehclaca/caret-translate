@@ -21,7 +21,7 @@ public enum NLLBLanguageCodes {
         "he": "heb_Hebr", "ca": "cat_Latn", "lv": "lvs_Latn",
         "lt": "lit_Latn", "et": "est_Latn",
         // South/Southeast Asian
-        "bn": "ben_Beng", "ta": "tam_Taml", "tl": "tgl_Latn",
+        "bn": "ben_Beng", "ta": "tam_Taml", "tl": "tgl_Latn", "fil": "tgl_Latn",
         "ms": "zsm_Latn", "my": "mya_Mymr",
         // African
         "sw": "swh_Latn", "am": "amh_Ethi", "yo": "yor_Latn",
@@ -97,9 +97,11 @@ private actor HelperProcessManager {
         // Clean up any existing process
         shutdownInternal()
 
+        let pythonPath = NLLBTranslator.findPythonExecutable()
         let newProcess = Process()
-        newProcess.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        newProcess.arguments = ["python3", helperPath]
+        newProcess.executableURL = URL(fileURLWithPath: pythonPath)
+        newProcess.arguments = [helperPath]
+        // Inherit environment to pick up PATH etc if needed
         newProcess.environment = ProcessInfo.processInfo.environment
 
         let stdinPipe = Pipe()
@@ -125,10 +127,16 @@ private actor HelperProcessManager {
            let ready = try? JSONDecoder().decode(NLLBResponse.self, from: readyData),
            ready.status == "ready" {
             isReady = true
-            logger?("NLLBTranslator: Helper ready")
+            logger?("NLLBTranslator: Helper ready (using \(pythonPath))")
         } else {
+            // Capture error details
+            let stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
+            let stderrStr = String(data: stderrData, encoding: .utf8) ?? ""
+            
+            logger?("NLLBTranslator: Failed to start with \(pythonPath). Stderr: \(stderrStr)")
+            
             newProcess.terminate()
-            throw NLLBTranslatorError.modelNotReady
+            throw NLLBTranslatorError.helperStartFailed("Script failed to start. Error: \(stderrStr)")
         }
     }
 
@@ -262,8 +270,43 @@ public final class NLLBTranslator: Translator, Sendable {
         if let bundlePath = Bundle.main.path(forResource: "translate", ofType: "py", inDirectory: "nllb-translate") {
             return bundlePath
         }
+        if let bundlePath = Bundle.main.path(forResource: "translate", ofType: "py") {
+            return bundlePath
+        }
         // Fallback for development
         return "CaretTranslate/Resources/nllb-translate/translate.py"
+    }
+
+    /// Finds the best available Python executable.
+    public static func findPythonExecutable() -> String {
+        let candidates = [
+            // Verified working environment (Homebrew Python 3.11)
+            "/opt/homebrew/bin/python3.11",
+            "/usr/local/bin/python3.11",
+
+            // Standard framework installs (latest first)
+            "/Library/Frameworks/Python.framework/Versions/3.14/bin/python3",
+            "/Library/Frameworks/Python.framework/Versions/3.13/bin/python3",
+            "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+            "/Library/Frameworks/Python.framework/Versions/3.11/bin/python3",
+            "/Library/Frameworks/Python.framework/Versions/3.10/bin/python3",
+            "/Library/Frameworks/Python.framework/Versions/3.9/bin/python3",
+            // Homebrew Apple Silicon
+            "/opt/homebrew/bin/python3",
+            // Homebrew Intel / User local
+            "/usr/local/bin/python3",
+            "\(FileManager.default.homeDirectoryForCurrentUser.path)/.local/bin/python3",
+            // System fallback
+            "/usr/bin/python3"
+        ]
+        
+        for path in candidates {
+            if FileManager.default.fileExists(atPath: path) {
+                return path
+            }
+        }
+        
+        return "/usr/bin/python3"
     }
 }
 

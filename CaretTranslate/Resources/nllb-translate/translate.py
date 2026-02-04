@@ -39,7 +39,7 @@ LANG_CODE_MAP = {
     "hr": "hrv_Latn", "sk": "slk_Latn",
     "he": "heb_Hebr", "ca": "cat_Latn", "lv": "lvs_Latn",
     "lt": "lit_Latn", "et": "est_Latn",
-    "bn": "ben_Beng", "ta": "tam_Taml", "tl": "tgl_Latn",
+    "bn": "ben_Beng", "ta": "tam_Taml", "tl": "tgl_Latn", "fil": "tgl_Latn",
     "ms": "zsm_Latn", "my": "mya_Mymr",
     "sw": "swh_Latn", "am": "amh_Ethi", "yo": "yor_Latn",
     "fa": "pes_Arab", "ur": "urd_Arab",

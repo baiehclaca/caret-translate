@@ -7,7 +7,20 @@
 		<key>CaretTranslate.xcscheme_^#shared#^_</key>
 		<dict>
 			<key>orderHint</key>
-			<integer>0</integer>
+			<integer>1</integer>
+		</dict>
+	</dict>
+	<key>SuppressBuildableAutocreation</key>
+	<dict>
+		<key>6D1416D52F27F0850089815A</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>6D1416E72F27F0870089815A</key>
+		<dict>
+			<key>primary</key>
+			<true/>
 		</dict>
 	</dict>
 </dict>

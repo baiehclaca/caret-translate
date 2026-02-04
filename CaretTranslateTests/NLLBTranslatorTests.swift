@@ -12,6 +12,7 @@ final class NLLBTranslatorTests: XCTestCase {
     func testLanguageCodeMapping() {
         XCTAssertEqual(NLLBLanguageCodes.nllbCode(for: "sv"), "swe_Latn")
         XCTAssertEqual(NLLBLanguageCodes.nllbCode(for: "fi"), "fin_Latn")
+        XCTAssertEqual(NLLBLanguageCodes.nllbCode(for: "fil"), "tgl_Latn")
         XCTAssertEqual(NLLBLanguageCodes.nllbCode(for: "unknown"), nil)
     }
 

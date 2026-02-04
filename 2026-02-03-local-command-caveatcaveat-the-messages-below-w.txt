@@ -1,0 +1,680 @@
+
+▗ ▗   ▖ ▖  Claude Code v2.1.29
+           Opus 4.5 · Claude Pro
+  ▘▘ ▝▝    ~/Documents/caret/CaretTranslate
+
+❯ /clear 
+  ⎿  (no content)
+
+❯  Analyze the /Users/teodorwaltervido/Documents/caret/CaretTranslate and   
+  lets work on it.                                                          
+
+⏺ I'll analyze the CaretTranslate project to understand its structure and
+  purpose.
+
+⏺ Explore(Explore CaretTranslate codebase)
+  ⎿  Done (36 tool uses · 52.5k tokens · 1m 16s)
+
+⏺ CaretTranslate Overview
+
+  CaretTranslate is a native macOS 15.0+ (Sequoia) menu bar translation utility
+  written in Swift.
+
+  Purpose
+
+  A privacy-focused translation tool that sits in the system status bar,
+  allowing users to translate text anywhere on the system without leaving their
+  current application. It uses Apple's native Translation framework.
+
+  Architecture
+
+  CaretTranslate/
+  ├── App/                 # UI layer (28 Swift files) - SwiftUI settings,
+  status bar, monitors
+  ├── Core/                # Business logic (14 Swift files) - translation
+  service, selectors
+  ├── CaretTranslateTests/ # 17 test files with 50+ test cases
+  └── Packages/CoreMLPipelines/  # Experimental LLM support (not integrated)
+
+  Key Features
+
+  - 3-tier translation fallback: Mixed-language word → Sentence → Word
+  - Dual activation modes: Double-tap or hotkey shortcuts
+  - Privacy controls: App allowlist/denylist by bundle ID
+  - Translation history with retention policies
+  - Preview/confirmation dialog before text replacement
+  - Debug logging window for troubleshooting
+
+  Technologies
+
+  - Swift (async/await, @MainActor)
+  - Apple Translation framework (macOS 15+)
+  - NaturalLanguage framework (language detection)
+  - AppKit + SwiftUI
+
+  Current State
+
+  - Status: Complete and production-ready
+  - Tests: All passing (last run: 2026-02-02)
+  - Tasks: 11/11 completed (CTD-001 to CTD-011)
+  - Git: Single initial commit
+
+  Recent Work (Feb 2-3)
+
+  - Removed FreeDict and DeepL integrations (simplified to Apple Translation
+  only)
+  - Added mixed-language word detection using NaturalLanguage
+  - Fixed CoreML Float16 logits conversion issues
+
+  ---
+  What would you like to work on? Some possibilities:
+  - Add new features
+  - Fix bugs or improve existing functionality
+  - Refactor or optimize code
+  - Add more tests
+  - Prepare for distribution (notarization, App Store)
+  - Something else?
+
+✻ Worked for 1m 31s
+
+❯ Okay so the problem i have is that Apple Translation framework does work  
+  really good but doesnt have some languages. And we need more languages.   
+  Can you think about how could we get more languages while remaining the   
+  quality and the fastness of the Apple Translation framework?              
+
+⏺ This is a great architectural challenge. Let me invoke the brainstorming skill
+   to explore this properly before jumping to solutions.
+
+⏺ Skill(brainstorming)
+  ⎿  Successfully loaded skill
+
+⏺ I'll explore this problem properly. Let me first check what languages Apple
+  Translation actually supports, and understand the current translation
+  architecture better.
+
+⏺ Read 3 files (ctrl+o to expand)
+
+⏺ Good, I can see the architecture is clean with a Translator protocol. Let me
+  also check what languages are currently configured in the app.
+
+⏺ Searched for 1 pattern, read 3 files (ctrl+o to expand)
+
+⏺ Now I have a clear picture. Let me start the brainstorming conversation.
+
+  ---
+  Current State
+
+  Apple Translation supports 20 languages: Arabic, Chinese
+  (Simplified/Traditional), Dutch, English, French, German, Hindi, Indonesian,
+  Italian, Japanese, Korean, Polish, Portuguese, Russian, Spanish, Thai,
+  Turkish, Ukrainian, Vietnamese.
+
+  Missing notable languages:
+  - Scandinavian: Swedish, Norwegian, Danish, Finnish
+  - Eastern European: Czech, Hungarian, Romanian, Bulgarian, Greek
+  - Southeast Asian: Tagalog, Malay
+  - Others: Hebrew, Persian, Bengali, Tamil, and many more
+
+  Your architecture is well-designed — the Translator protocol makes it easy to
+  swap or chain backends.
+
+  ---
+  First Question
+
+  Before exploring solutions, I need to understand your priorities:
+
+  What matters most to you for the additional languages?
+
+  1. Privacy-first — Everything must stay on-device, no cloud APIs
+  2. Quality-first — Best possible translations, cloud APIs are acceptable
+  3. Balanced — Prefer on-device, but allow cloud for languages where local
+  models are poor
+  4. User choice — Let users configure which backend to use per language pair
+
+  Which of these best describes your priority?
+
+✻ Churned for 42s
+
+❯ Its not about the privacy but i want good speed. Near instant             
+  translation. Also i kind of like that its offline but it doesnt have to   
+  be.                                                                       
+
+⏺ Got it — speed is the priority, with offline being a nice-to-have.
+
+  That's a meaningful constraint. Apple Translation is fast because it runs
+  optimized CoreML models on-device. Cloud APIs add network latency (100-500ms
+  minimum), which might feel sluggish compared to the near-instant Apple
+  experience.
+
+  ---
+  Follow-up Question
+
+  How many additional languages do you actually need?
+
+  1. Just a few specific ones — e.g., "I need Swedish and Finnish"
+  2. A reasonable set — 10-20 more commonly requested languages
+  3. As many as possible — comprehensive coverage (100+ languages)
+
+  This affects which approach makes sense. Supporting 3-5 specific languages is
+  very different from supporting 100+.
+
+❯ 2 
+
+⏺ 10-20 additional languages is a sweet spot — focused enough to be practical,
+  broad enough to be meaningful.
+
+  ---
+  Follow-up Question
+
+  Which languages are you most interested in adding?
+
+  Pick the ones that matter most to you (or your users):
+
+  Scandinavian:
+  - Swedish, Norwegian, Danish, Finnish, Icelandic
+
+  Eastern European:
+  - Czech, Hungarian, Romanian, Bulgarian, Greek, Serbian, Croatian, Slovak
+
+  Other European:
+  - Hebrew, Catalan, Latvian, Lithuanian, Estonian
+
+  South/Southeast Asian:
+  - Bengali, Tamil, Tagalog, Malay, Burmese
+
+  African:
+  - Swahili, Amharic, Yoruba
+
+  Other:
+  - Persian (Farsi), Urdu
+
+  Or if you have a specific list in mind, just tell me which ones.
+
+❯ All please.  
+
+⏺ All of them — so we're looking at 25-30 additional languages. That changes the
+   approach significantly.
+
+  ---
+  Two Viable Approaches
+
+  Given your constraints (speed + broad coverage), here are the two realistic
+  options:
+
+  Option A: On-Device NLLB Model (Recommended)
+
+  What: Meta's "No Language Left Behind" model — a single multilingual model
+  supporting 200+ languages.
+
+  - Speed: Can be fast with CoreML optimization (~100-300ms per translation)
+  - Offline: Yes, fully on-device
+  - Quality: Good, especially for the languages you listed
+  - Trade-off: Model size (~1-2GB for distilled version), initial download
+  required
+
+  How it works: One model handles all language pairs. You'd use Apple
+  Translation for its 20 languages (fastest), fall back to NLLB for everything
+  else.
+
+  ---
+  Option B: Cloud API (DeepL or Google)
+
+  What: Use a high-quality cloud translation API for unsupported languages.
+
+  - Speed: 150-400ms typical (network dependent)
+  - Offline: No
+  - Quality: Excellent (DeepL especially)
+  - Trade-off: Requires internet, small latency hit vs Apple Translation
+
+  How it works: Apple Translation for its languages, cloud API for the rest.
+  Could add local caching to speed up repeated translations.
+
+  ---
+  My Recommendation
+
+  Option A (NLLB) — if we can get CoreML inference fast enough, this gives you
+  the best of both worlds: near-instant, offline, broad coverage.
+
+  Question: Are you okay with users needing to download a ~1-2GB model pack for
+  the additional languages? Or would you prefer to keep the app lightweight and
+  accept a small network latency?
+
+❯ Lets try the NLLB route. I just need it to have the smallest latency we   
+  can get,                                                                  
+
+⏺ NLLB with minimal latency — let's figure out how to make this fast.
+
+  Let me check what's already in your CoreMLPipelines package, since that might
+  give us a head start.
+
+⏺ Searched for 2 patterns, read 1 file (ctrl+o to expand)
+
+⏺ The CoreMLPipelines is just a concept README — no actual implementation. We'll
+   need to build the NLLB integration.
+
+  ---
+  Latency Analysis
+
+  Let me break down the options for fastest NLLB inference on macOS:
+
+  Option 1: CTranslate2 (Fastest)
+
+  What: Optimized C++ inference engine specifically built for translation
+  models.
+
+  - Expected latency: 50-150ms for short sentences (int8 quantized)
+  - Why fast: Purpose-built for seq2seq models, int8 quantization, optimized CPU
+   kernels
+  - Challenge: Need to integrate C++ library or use Python bindings
+
+  Option 2: CoreML Conversion
+
+  What: Convert NLLB to CoreML format for Neural Engine acceleration.
+
+  - Expected latency: 100-300ms (depends on optimization)
+  - Why fast: Native Apple Silicon acceleration
+  - Challenge: Seq2seq models are tricky to convert; encoder-decoder
+  architecture requires careful handling
+
+  Option 3: MLX (Apple's ML Framework)
+
+  What: Apple's new ML framework optimized for Apple Silicon.
+
+  - Expected latency: 100-200ms estimated
+  - Why fast: Unified memory architecture, Metal acceleration
+  - Challenge: Primarily Python-based, would need subprocess or bindings
+
+  ---
+  My Recommendation
+
+  CTranslate2 is likely the fastest path for NLLB. It's battle-tested for
+  translation and has pre-optimized NLLB models available.
+
+  Question: How do you feel about bundling a small helper process for
+  translations? Two approaches:
+
+  1. Embedded C++ library — Tightest integration, lowest latency, but more
+  complex build
+  2. Bundled Python service — Easier to implement, slightly more overhead
+  (~20-50ms), but simpler to maintain
+
+  Which appeals to you more? Or would you prefer I explore both and give you
+  concrete latency numbers first?
+
+✻ Sautéed for 43s
+
+❯ CTranslate2 please. 
+
+⏺ CTranslate2 it is. Now let's figure out the integration.
+
+  Question: For integrating CTranslate2 into your Swift app, there's a
+  trade-off:
+
+  1. Direct C++ linking — Lowest latency (~0ms overhead), but complex build
+  setup with C++/Swift bridging and dependency management
+  2. Helper binary with pipes — Small overhead (~5-10ms), ship a standalone
+  translation CLI that your app communicates with via stdin/stdout. Simpler to
+  build and maintain.
+  3. Local Unix socket service — Similar overhead (~5-10ms), helper process
+  stays running, avoids process spawn per translation. Best for frequent
+  translations.
+
+  Given you're doing quick in-context translations (user triggers → instant
+  result), option 3 (persistent local service) is probably the sweet spot — fast
+   startup after first use, simple IPC, easy to update the model independently.
+
+  Which approach do you prefer?
+
+❯ 2 
+
+⏺ Helper binary with pipes — good choice. Simple and effective.
+
+  ---
+  Design Section 1: Architecture Overview
+
+  Here's how the pieces fit together:
+
+  ┌─────────────────────────────────────────────────────────┐
+  │                    CaretTranslate                        │
+  │                     (Swift App)                          │
+  ├─────────────────────────────────────────────────────────┤
+  │  TranslationService                                      │
+  │    ├── AppleTranslator (20 languages, fastest)          │
+  │    └── NLLBTranslator (200+ languages, fallback)        │
+  │              │                                           │
+  │              │ stdin/stdout (JSON)                       │
+  │              ▼                                           │
+  │  ┌─────────────────────────────────┐                    │
+  │  │  caret-translate-nllb (binary)  │                    │
+  │  │  - CTranslate2 + NLLB model     │                    │
+  │  │  - Keeps model loaded in memory │                    │
+  │  │  - One request per line         │                    │
+  │  └─────────────────────────────────┘                    │
+  └─────────────────────────────────────────────────────────┘
+
+  Flow:
+  1. User triggers translation
+  2. TranslationService checks if Apple Translation supports the language pair
+  3. If yes → use AppleTranslator (fastest)
+  4. If no → use NLLBTranslator which pipes request to helper binary
+  5. Helper translates using CTranslate2, returns result
+  6. App displays translation
+
+  Does this architecture make sense so far?
+
+❯ Yes it does.  
+
+⏺ Design Section 2: Helper Binary (caret-translate-nllb)
+
+  Language: Python with CTranslate2 bindings (faster to develop, easy model
+  management)
+
+  Protocol: Line-delimited JSON over stdin/stdout
+
+  → Input (one line):
+  {"text": "Hello world", "source": "en", "target": "sv"}
+
+  ← Output (one line):
+  {"translation": "Hej världen"}
+
+  ← Error (one line):
+  {"error": "Unsupported language pair"}
+
+  Lifecycle:
+  1. App spawns helper on first NLLB translation request
+  2. Helper loads model into memory (~2-3 seconds cold start)
+  3. Helper stays alive, processing requests until app terminates
+  4. Subsequent translations are fast (~50-150ms)
+
+  Model: NLLB-200-distilled-600M with int8 quantization
+  - Size: ~300MB on disk
+  - Memory: ~600MB when loaded
+  - Coverage: 200+ languages
+
+  Bundling: The helper + model gets bundled in the app's Resources folder, or
+  downloaded on first use to ~/Library/Application Support/CaretTranslate/.
+
+  Does this look right? Any concerns about the cold start time or memory usage?
+
+❯ It looks right.  
+
+⏺ Design Section 3: Swift Integration (NLLBTranslator)
+
+  New file: NLLBTranslator.swift conforming to existing Translator protocol
+
+  public final class NLLBTranslator: Translator {
+      private var process: Process?
+      private var stdin: FileHandle?
+      private var stdout: FileHandle?
+
+      // Lazy spawn - only starts helper when first needed
+      func translate(_ text: String, from: Language, to: Language) async throws
+  -> String?
+  }
+
+  Key behaviors:
+
+  1. Lazy initialization — Helper only spawns on first NLLB request
+  2. Connection reuse — Same process handles all subsequent requests
+  3. Automatic restart — If helper crashes, respawn on next request
+  4. Graceful shutdown — Terminate helper when app quits
+
+  Error handling:
+  - Timeout after 30 seconds (same as Apple Translator)
+  - Surface errors to user via existing UI
+  - Fall back gracefully if helper fails to start
+
+  Language routing logic in TranslationCoordinator:
+  if AppleTranslation.supports(from, to) {
+      use AppleTranslator      // ~50ms
+  } else {
+      use NLLBTranslator       // ~100-150ms
+  }
+
+  Does the Swift integration approach look good?
+
+❯ Yes. Start the integration please. 
+
+⏺ I'll create an implementation plan first, then we'll execute it.
+
+⏺ Skill(writing-plans)
+  ⎿  Successfully loaded skill
+
+⏺ I'm using the writing-plans skill to create the implementation plan.
+
+  Let me first gather the exact file paths and understand the current structure
+  better.
+
+⏺ Searched for 1 pattern, read 3 files (ctrl+o to expand)
+
+⏺ Now let me check the existing tests structure and create the plan.
+
+⏺ Read 1 file (ctrl+o to expand)
+
+⏺ Bash(mkdir -p
+      /Users/teodorwaltervido/Documents/caret/CaretTranslate/docs/plans)
+  ⎿  (No content)
+
+⏺ Now I have all the context I need. Let me write the implementation plan.
+
+⏺ Write(docs/plans/2026-02-03-nllb-integration.md)
+  ⎿  Wrote 1227 lines to docs/plans/2026-02-03-nllb-integration.md
+      1 # NLLB Translation Integration Plan
+      2 
+      3 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-p
+        lans to implement this plan task-by-task.
+      4 
+      5 **Goal:** Add support for 200+ languages via NLLB (No Language Le
+        ft Behind) model while keeping Apple Translation as the fast prim
+        ary translator.
+      6 
+      7 **Architecture:** A Python helper binary using CTranslate2 runs a
+        s a subprocess. Swift app communicates via stdin/stdout JSON prot
+        ocol. Apple Translation handles its 20 supported languages; NLLB
+        handles everything else.
+      8 
+      9 **Tech Stack:** Python 3, CTranslate2, NLLB-200-distilled-600M (i
+        nt8), Swift Process/Pipe APIs
+     … +1217 lines (ctrl+o to expand)
+
+⏺ Plan complete and saved to docs/plans/2026-02-03-nllb-integration.md.
+
+  Two execution options:
+
+  1. Subagent-Driven (this session) — I dispatch a fresh subagent per task,
+  review between tasks, fast iteration
+  2. Parallel Session (separate) — Open new session in the project directory
+  with the executing-plans skill, batch execution with checkpoints
+
+  Which approach?
+
+✻ Crunched for 2m 58s
+
+❯ 1. 
+
+⏺ Skill(subagent-driven-development)
+  ⎿  Successfully loaded skill
+
+⏺ I'm using Subagent-Driven Development to execute this plan.
+
+  Let me first read the plan and create the task list.
+
+⏺ Read 1 file (ctrl+o to expand)
+
+⏺ Now let me create the task list with all tasks extracted from the plan:
+
+⏺ Now let me set up the task dependencies:
+
+⏺ Tasks created. Starting with Task #1: Create Python helper binary.
+
+⏺ Read 1 file (ctrl+o to expand)
+
+⏺ Task(Implement Task 1: Python helper)
+  ⎿  Done (12 tool uses · 37.3k tokens · 1m 13s)
+
+⏺ Task 1 complete. Let me verify and then move to Task 2:
+
+⏺ Read 1 file (ctrl+o to expand)
+
+⏺ Now Task 2: Create model download script:
+
+⏺ Task(Implement Task 2: download_model.py)
+  ⎿  Done (14 tool uses · 33.3k tokens · 1m 6s)
+
+⏺ Tasks 1 and 2 complete. Now Task 3: Create NLLBTranslator Swift class with 
+  tests:
+
+⏺ Task(Implement Task 3: NLLBTranslator Swift)
+  ⎿  Done (22 tool uses · 92.4k tokens · 3m 46s)
+  ⎿  Found 8 new diagnostic issues in 2 files (ctrl+o to expand)
+
+⏺ I see there are diagnostic issues with the implementation. The subagent made
+  some modifications that don't match the codebase. Let me fix these issues:
+
+⏺ Read 2 files (ctrl+o to expand)
+
+⏺ The subagent modified the implementation. The diagnostic errors are likely
+  just SourceKit issues because the files aren't properly added to Xcode yet.
+  The Translator and Language types exist in the project. Let me verify the
+  build actually works:
+
+⏺ Bash(cd /Users/teodorwaltervido/Documents/caret/CaretTranslate && xcodebuild
+      -project CaretTranslate.xcodeproj -scheme CaretTranslate -destination
+      'platform=macOS' b…)
+  ⎿     cd /Users/teodorwaltervido/Documents/caret/CaretTranslate
+        /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.
+    xctoolchain/usr/bin/dsymutil /Users/teodorwaltervido/Library/Developer/
+    … +120 lines (ctrl+o to expand)
+
+
+
+⏺ Build succeeded. Now let me run the tests:
+
+⏺ Bash(xcodebuild -project CaretTranslate.xcodeproj -scheme CaretTranslate
+      -destination 'platform=macOS' test 2>&1 | grep -E "(Test
+      Case|passed|failed|NLLB)" | head -2…)
+  ⎿ Test case 'NaturalLanguageWordLanguageIdentifierTests.testDetectsDomina
+    ntLanguageForSentence()' passed on 'My Mac - CaretTranslate (67732)' (0
+    .004 seconds)
+    … +43 lines (ctrl+o to expand)
+
+
+
+⏺ Bash(xcodebuild -project CaretTranslate.xcodeproj -scheme CaretTranslate
+      -destination 'platform=macOS' test 2>&1 | grep -E "(NLLB|56
+      tests|passed|failed)" | tail -10)
+  ⎿ Test case 'DoubleTapDetectorTests.testResetsAfterTrigger()' passed on '
+    My Mac - CaretTranslate (67807)' (0.001 seconds)
+    Test case 'DoubleTapDetectorTests.testTriggersOnSecondTapWithinThreshol
+    … +17 lines (ctrl+o to expand)
+
+
+
+⏺ Let me check if the NLLB test file was added to the Xcode project:
+
+⏺ Searched for 1 pattern (ctrl+o to expand)
+
+⏺ The new files weren't added to the Xcode project. Let me add them:
+
+⏺ Read 1 file (ctrl+o to expand)
+
+⏺ I see - this is an Xcode 16+ project using PBXFileSystemSynchronizedRootGroup
+  which auto-syncs files from the folder. The files should already be included.
+  Let me check if the build actually includes them:
+
+⏺ Bash(xcodebuild -project CaretTranslate.xcodeproj -scheme CaretTranslate
+      -destination 'platform=macOS' test 2>&1 | grep -i "NLLB")
+  ⎿ Test suite 'NLLBTranslatorTests' started on 'My Mac - CaretTranslate (6
+    7912)'
+    Test case 'NLLBTranslatorTests.testIsNLLBLanguage()' passed on 'My Mac
+    … +5 lines (ctrl+o to expand)
+
+
+⏺ All NLLB tests pass. The diagnostic warnings were just SourceKit timing
+  issues. Task 3 is complete. Let me update and move to Task 4:
+
+⏺ Now Task 4: Create RoutingTranslator with tests:
+
+⏺ Task(Implement Task 4: RoutingTranslator)
+  ⎿  Done (16 tool uses · 54.4k tokens · 1m 21s)
+  ⎿  Found 11 new diagnostic issues in 2 files (ctrl+o to expand)
+
+⏺ These are SourceKit indexing issues, not real errors. The tests passed and
+  commit succeeded. Let me verify the build still works and move on:
+
+⏺ Bash(xcodebuild -project CaretTranslate.xcodeproj -scheme CaretTranslate
+      -destination 'platform=macOS' test 2>&1 | grep -E
+      "(RoutingTranslator|NLLB|passed|failed|BUI…)
+  ⎿ Test case 'SentenceSelectorTests.testSelectsWholeTextWhenNoTerminators(
+    )' passed on 'My Mac - CaretTranslate (68426)' (0.000 seconds)
+    Test case 'SentenceSelectorTests.testTreatsNewlineAsSentenceBoundary()'
+    … +29 lines (ctrl+o to expand)
+
+
+
+⏺ Bash(xcodebuild -project CaretTranslate.xcodeproj -scheme CaretTranslate
+      -destination 'platform=macOS' test 2>&1 | grep -E "RoutingTranslator")
+  ⎿ Test suite 'RoutingTranslatorTests' started on 'My Mac - CaretTranslate
+     (68495)'
+    Test case 'RoutingTranslatorTests.testRoutesToAppleForSupportedLanguage
+    … +5 lines (ctrl+o to expand)
+
+
+
+⏺ All tests pass. The SourceKit warnings are just IDE index lag. Moving to Task
+  5:
+
+⏺ Task 5: Update TranslationCoordinator to use RoutingTranslator:
+
+⏺ Read 2 files (ctrl+o to expand)
+
+⏺ Now I'll update the TranslationCoordinator to use RoutingTranslator:
+
+⏺ Update(CaretTranslate/App/TranslationCoordinator.swift)
+  ⎿  Added 19 lines, removed 2 lines
+      12      private let sentenceTranslator: Translator
+      13      private let wordTranslator: Translator
+      14      private let languageIdentifier: WordLanguageIdentifying?
+      15 +    private let nllbTranslator: NLLBTranslator
+      16      private var prefetchTask: Task<PreparedTranslation?, Error>
+          ?
+      17 +
+      18      init(settings: SettingsStore = SettingsStore()) {
+      19          self.settings = settings
+      20          self.textClient = AccessibilityTextClient()
+      21          self.privacyFilter = PrivacyFilter(settings: settings)
+      22          self.historyStore = TranslationHistoryStore(settings: s
+          ettings)
+      23 +
+      24          let appleTranslator = AppleTranslator(logger: DebugLogg
+          er.log)
+      22 -        self.sentenceTranslator = appleTranslator              
+      23 -        self.wordTranslator = appleTranslator                  
+      25 +        self.nllbTranslator = NLLBTranslator(logger: DebugLogge
+         +r.log)
+      26 +
+      27 +        let routingTranslator = RoutingTranslator(
+      28 +            appleTranslator: appleTranslator,
+      29 +            nllbTranslator: nllbTranslator,
+      30 +            logger: DebugLogger.log
+      31 +        )
+      32 +
+      33 +        self.sentenceTranslator = routingTranslator
+      34 +        self.wordTranslator = routingTranslator
+      35          self.languageIdentifier = NaturalLanguageWordLanguageId
+          entifier(logger: DebugLogger.log)
+      36      }
+      37 
+      38 +    func shutdown() {
+      39 +        Task {
+      40 +            await nllbTranslator.shutdown()
+      41 +        }
+      42 +    }
+      43 +
+      44      func translateNearestWord() {
+      45          Task { @MainActor in
+      46              do {
+  ⎿  You've hit your limit · resets 9pm (Europe/Bratislava)
+     /upgrade to increase your usage limit.
+
+✻ Cooked for 12m 43s
