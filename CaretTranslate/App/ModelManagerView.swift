@@ -59,7 +59,9 @@ struct ModelManagerView: View {
     private func checkModelStatus() {
         let modelPath = Self.modelPath()
         let configPath = (modelPath as NSString).appendingPathComponent("config.json")
+        let tokenizerPath = (modelPath as NSString).appendingPathComponent("sentencepiece.bpe.model")
         modelInstalled = FileManager.default.fileExists(atPath: configPath)
+            && FileManager.default.fileExists(atPath: tokenizerPath)
     }
 
     private func downloadModel() {
@@ -90,25 +92,27 @@ struct ModelManagerView: View {
         let modelDir = URL(fileURLWithPath: Self.modelPath())
         try FileManager.default.createDirectory(at: modelDir, withIntermediateDirectories: true)
 
-        // Pre-converted CTranslate2 model files from Hugging Face
-        // Using entai2965/nllb-200-distilled-600M-ctranslate2 (public model)
-        let baseURL = "https://huggingface.co/entai2965/nllb-200-distilled-600M-ctranslate2/resolve/main"
+        // Pre-converted CTranslate2 model files from Hugging Face.
+        // Using entai2965/nllb-200-distilled-600M-ctranslate2 (public model).
+        let modelBaseURL = "https://huggingface.co/entai2965/nllb-200-distilled-600M-ctranslate2/resolve/main"
+        let tokenizerBaseURL = "https://huggingface.co/facebook/nllb-200-distilled-600M/resolve/main"
 
-        let files = [
-            "config.json",
-            "model.bin",
-            "shared_vocabulary.json"
+        let downloads: [(baseURL: String, filename: String)] = [
+            (modelBaseURL, "config.json"),
+            (modelBaseURL, "model.bin"),
+            (modelBaseURL, "shared_vocabulary.json"),
+            (tokenizerBaseURL, "sentencepiece.bpe.model")
         ]
 
-        for (index, filename) in files.enumerated() {
-            let progress = Double(index) / Double(files.count)
+        for (index, entry) in downloads.enumerated() {
+            let progress = Double(index) / Double(downloads.count)
             await MainActor.run {
                 self.downloadProgress = progress
-                self.statusMessage = "Downloading \(filename)..."
+                self.statusMessage = "Downloading \(entry.filename)..."
             }
 
-            let fileURL = URL(string: "\(baseURL)/\(filename)")!
-            let destinationURL = modelDir.appendingPathComponent(filename)
+            let fileURL = URL(string: "\(entry.baseURL)/\(entry.filename)")!
+            let destinationURL = modelDir.appendingPathComponent(entry.filename)
 
             try await downloadFile(from: fileURL, to: destinationURL)
         }

@@ -80,7 +80,10 @@ final class LaunchAtLoginManager {
                 }
                 logger("INFO: Launch at login enabled.")
                 return .success(updatedStatus)
-            @unknown default:
+            case .notFound:
+                logger("ERROR: Launch at login service not found.")
+                return .failure(.unknownStatus(currentStatus))
+            default:
                 return .failure(.unknownStatus(currentStatus))
             }
         } else {
@@ -98,7 +101,10 @@ final class LaunchAtLoginManager {
                 let updatedStatus = service.status
                 logger("INFO: Launch at login disabled.")
                 return .success(updatedStatus)
-            @unknown default:
+            case .notFound:
+                logger("ERROR: Launch at login service not found.")
+                return .failure(.unknownStatus(currentStatus))
+            default:
                 return .failure(.unknownStatus(currentStatus))
             }
         }

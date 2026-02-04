@@ -38,6 +38,7 @@ Track the project's actionable tasks, owners, dependencies, and outcomes for Car
 - CTD-018 | Normalize invalid language selections on launch and add tests | Status: done | Owner: @codex | Dependency: none | Review: n/a
 - CTD-019 | Add diacritic restoration pass for common Slovak/Czech phrases | Status: done | Owner: @codex | Dependency: none | Review: n/a
 - CTD-020 | Enable universal translation by removing privacy filtering | Status: done | Owner: @codex | Dependency: none | Review: n/a
+- CTD-021 | Add native CTranslate2 helper option with tokenizer download | Status: done | Owner: @codex | Dependency: none | Review: n/a
 
 ## Outcomes Log
 - 2026-02-02: Added Apple NaturalLanguage-based word language identification, updated translation routing, and added tests. (Owner: @codex)
@@ -57,3 +58,4 @@ Track the project's actionable tasks, owners, dependencies, and outcomes for Car
 - 2026-02-04: Normalized invalid language selections on launch, fixed language code casing, and added tests. (Owner: @codex)
 - 2026-02-04: Added diacritic restoration pass for Slovak/Czech phrase input and tests. (Owner: @codex)
 - 2026-02-04: Removed privacy filtering system; translation now works in all apps except secure fields. (Owner: @codex)
+- 2026-02-04: Added native CTranslate2 helper option, tokenizer download, and helper discovery fallback in NLLBTranslator. (Owner: @codex)

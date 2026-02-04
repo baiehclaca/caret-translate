@@ -81,11 +81,11 @@ private actor HelperProcessManager {
     private var stdin: FileHandle?
     private var stdout: FileHandle?
     private var isReady = false
-    private let helperPath: String
+    private let helperCommand: HelperCommand
     private let logger: (@Sendable (String) -> Void)?
 
-    init(helperPath: String, logger: (@Sendable (String) -> Void)?) {
-        self.helperPath = helperPath
+    init(helperCommand: HelperCommand, logger: (@Sendable (String) -> Void)?) {
+        self.helperCommand = helperCommand
         self.logger = logger
     }
 
@@ -97,12 +97,10 @@ private actor HelperProcessManager {
         // Clean up any existing process
         shutdownInternal()
 
-        let pythonPath = NLLBTranslator.findPythonExecutable()
         let newProcess = Process()
-        newProcess.executableURL = URL(fileURLWithPath: pythonPath)
-        newProcess.arguments = [helperPath]
-        // Inherit environment to pick up PATH etc if needed
-        newProcess.environment = ProcessInfo.processInfo.environment
+        newProcess.executableURL = helperCommand.executableURL
+        newProcess.arguments = helperCommand.arguments
+        newProcess.environment = helperCommand.environment
 
         let stdinPipe = Pipe()
         let stdoutPipe = Pipe()
@@ -127,13 +125,13 @@ private actor HelperProcessManager {
            let ready = try? JSONDecoder().decode(NLLBResponse.self, from: readyData),
            ready.status == "ready" {
             isReady = true
-            logger?("NLLBTranslator: Helper ready (using \(pythonPath))")
+            logger?("NLLBTranslator: Helper ready (\(helperCommand.displayName))")
         } else {
             // Capture error details
             let stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
             let stderrStr = String(data: stderrData, encoding: .utf8) ?? ""
             
-            logger?("NLLBTranslator: Failed to start with \(pythonPath). Stderr: \(stderrStr)")
+            logger?("NLLBTranslator: Failed to start (\(helperCommand.displayName)). Stderr: \(stderrStr)")
             
             newProcess.terminate()
             throw NLLBTranslatorError.helperStartFailed("Script failed to start. Error: \(stderrStr)")
@@ -187,7 +185,19 @@ private actor HelperProcessManager {
     }
 }
 
-/// Translator implementation using NLLB via a Python helper process.
+/// Represents the command used to launch the NLLB helper process.
+private struct HelperCommand: Sendable {
+    /// The executable to run.
+    let executableURL: URL
+    /// Arguments to pass to the executable.
+    let arguments: [String]
+    /// Environment variables for the helper.
+    let environment: [String: String]
+    /// Human-readable descriptor for logging.
+    let displayName: String
+}
+
+/// Translator implementation using NLLB via a helper process (native or Python).
 public final class NLLBTranslator: Translator, Sendable {
     private let helperManager: HelperProcessManager
     private let logger: (@Sendable (String) -> Void)?
@@ -198,8 +208,8 @@ public final class NLLBTranslator: Translator, Sendable {
         timeoutSeconds: Double = 30,
         logger: (@Sendable (String) -> Void)? = nil
     ) {
-        let path = helperPath ?? Self.defaultHelperPath()
-        self.helperManager = HelperProcessManager(helperPath: path, logger: logger)
+        let command = Self.resolveHelperCommand(helperPath: helperPath)
+        self.helperManager = HelperProcessManager(helperCommand: command, logger: logger)
         self.timeoutSeconds = timeoutSeconds
         self.logger = logger
     }
@@ -265,8 +275,52 @@ public final class NLLBTranslator: Translator, Sendable {
         await helperManager.shutdown()
     }
 
-    /// Returns the default path to the helper script.
-    private static func defaultHelperPath() -> String {
+    /// Resolves the helper command, preferring native CTranslate2 if available.
+    private static func resolveHelperCommand(helperPath: String?) -> HelperCommand {
+        if let overridePath = helperPath {
+            return makeCommand(from: overridePath)
+        }
+
+        if let envOverride = ProcessInfo.processInfo.environment["NLLB_HELPER_PATH"] {
+            return makeCommand(from: envOverride)
+        }
+
+        if let nativeHelperPath = resolveNativeHelperPath() {
+            return makeDirectCommand(executablePath: nativeHelperPath)
+        }
+
+        let pythonScriptPath = resolvePythonHelperPath()
+        return makePythonCommand(scriptPath: pythonScriptPath)
+    }
+
+    /// Builds a helper command from a manually supplied path.
+    private static func makeCommand(from path: String) -> HelperCommand {
+        if path.lowercased().hasSuffix(".py") {
+            return makePythonCommand(scriptPath: path)
+        }
+        return makeDirectCommand(executablePath: path)
+    }
+
+    /// Returns the default path to the native helper binary, if present.
+    private static func resolveNativeHelperPath() -> String? {
+        if let bundlePath = Bundle.main.path(forResource: "translate-ct2", ofType: nil, inDirectory: "nllb-translate-native") {
+            return bundlePath
+        }
+        if let bundlePath = Bundle.main.path(forResource: "translate-ct2", ofType: nil) {
+            return bundlePath
+        }
+        let appSupport = defaultModelRootURL()
+        let localURL = appSupport
+            .appendingPathComponent("bin")
+            .appendingPathComponent("translate-ct2")
+        if FileManager.default.fileExists(atPath: localURL.path) {
+            return localURL.path
+        }
+        return nil
+    }
+
+    /// Returns the default path to the Python helper script.
+    private static func resolvePythonHelperPath() -> String {
         if let bundlePath = Bundle.main.path(forResource: "translate", ofType: "py", inDirectory: "nllb-translate") {
             return bundlePath
         }
@@ -275,6 +329,56 @@ public final class NLLBTranslator: Translator, Sendable {
         }
         // Fallback for development
         return "CaretTranslate/Resources/nllb-translate/translate.py"
+    }
+
+    /// Creates a command to run the native helper directly.
+    private static func makeDirectCommand(executablePath: String) -> HelperCommand {
+        let executableURL = URL(fileURLWithPath: executablePath)
+        let environment = makeHelperEnvironment()
+        return HelperCommand(
+            executableURL: executableURL,
+            arguments: [],
+            environment: environment,
+            displayName: "native helper \(executablePath)"
+        )
+    }
+
+    /// Creates a command to run the Python helper script.
+    private static func makePythonCommand(scriptPath: String) -> HelperCommand {
+        let pythonPath = findPythonExecutable()
+        let executableURL = URL(fileURLWithPath: pythonPath)
+        let environment = makeHelperEnvironment()
+        return HelperCommand(
+            executableURL: executableURL,
+            arguments: [scriptPath],
+            environment: environment,
+            displayName: "python helper \(scriptPath)"
+        )
+    }
+
+    /// Builds the helper environment, including the model path.
+    private static func makeHelperEnvironment() -> [String: String] {
+        var environment = ProcessInfo.processInfo.environment
+        environment["NLLB_MODEL_PATH"] = defaultModelPath()
+        return environment
+    }
+
+    /// Returns the default NLLB model path on disk.
+    private static func defaultModelPath() -> String {
+        let appSupport = defaultModelRootURL()
+        return appSupport
+            .appendingPathComponent("models")
+            .appendingPathComponent("nllb-200-distilled-600M-ct2-int8")
+            .path
+    }
+
+    /// Returns the base Application Support directory used by CaretTranslate.
+    private static func defaultModelRootURL() -> URL {
+        let appSupport = FileManager.default.urls(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask
+        ).first!
+        return appSupport.appendingPathComponent("CaretTranslate")
     }
 
     /// Finds the best available Python executable.
