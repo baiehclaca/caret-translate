@@ -102,9 +102,15 @@ class CausalLMModel {
 #if os(macOS)
         switch multiArray.dataType {
         case .float16:
-            let half = try MLShapedArray<Float16>(multiArray)
-            let floats = half.scalars.map(Float.init)
-            return MLShapedArray(scalars: floats, shape: half.shape)
+            let count = multiArray.count
+            let pointer = multiArray.dataPointer.bindMemory(to: UInt16.self, capacity: count)
+            var floats: [Float] = []
+            floats.reserveCapacity(count)
+            for index in 0..<count {
+                floats.append(floatFromHalf(pointer[index]))
+            }
+            let shape = multiArray.shape.map { $0.intValue }
+            return MLShapedArray(scalars: floats, shape: shape)
         case .float32:
             return try MLShapedArray<PipelineFloat>(multiArray)
         default:
@@ -122,5 +128,32 @@ class CausalLMModel {
             throw CausalLMModelError.unsupportedOutputDataType(multiArray.dataType)
         }
 #endif
+    }
+
+    /// Converts IEEE 754 half-precision bits into a Float without using Float16 (unavailable on macOS).
+    private func floatFromHalf(_ value: UInt16) -> Float {
+        let sign = UInt32(value & 0x8000) << 16
+        var exponent = Int((value & 0x7C00) >> 10)
+        var mantissa = UInt32(value & 0x03FF)
+
+        if exponent == 0 {
+            if mantissa == 0 {
+                return Float(bitPattern: sign)
+            }
+            exponent = 1
+            while (mantissa & 0x0400) == 0 {
+                mantissa <<= 1
+                exponent -= 1
+            }
+            mantissa &= 0x03FF
+        } else if exponent == 0x1F {
+            let bits = sign | 0x7F800000 | (mantissa << 13)
+            return Float(bitPattern: bits)
+        }
+
+        let exponentBits = UInt32(exponent + (127 - 15)) << 23
+        let mantissaBits = mantissa << 13
+        let bits = sign | exponentBits | mantissaBits
+        return Float(bitPattern: bits)
     }
 }
