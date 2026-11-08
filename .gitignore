@@ -7,3 +7,10 @@ DerivedData/
 .swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
 .netrc
 .worktrees/
+
+# Local agent transcripts and test output
+*.log
+test_summary.txt
+*-local-command-caveat*.txt
+__pycache__/
+*.pyc
